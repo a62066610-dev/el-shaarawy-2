@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مدرسة الشعراوي</title>
+<style>
+*{box-sizing:border-box;font-family:Tahoma}
+body{margin:0;background:#ffffff}
+header{background:#0d47a1;color:#fff;text-align:center;padding:18px;font-size:22px;font-weight:bold}
+.main{max-width:1000px;margin:auto;padding:10px}
+.btns{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap}
+.btns button{flex:1;min-width:140px;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer}
+#up{background:#1565c0;color:#fff}
+#delAll{background:#c62828;color:#fff}
+.card{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:0;overflow:hidden;margin-bottom:16px}
+.card iframe{width:100%;height:110vh;border:0;background:#fff;display:block}
+.info{padding:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;background:#f8f9fa;border-top:1px solid #eee}
+.info a{background:#2e7d32;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;font-size:14px}
+.info button{background:#ff5252;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px}
+#no{text-align:center;color:#888;padding:60px 10px}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);justify-content:center;align-items:center;z-index:9999}
+.box{background:#fff;padding:20px;border-radius:12px;width:90%;max-width:320px;text-align:center}
+.box input{width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;margin-top:10px;text-align:center;letter-spacing:5px}
+#error{color:red;height:18px;font-size:13px}
+.row{display:flex;gap:10px;margin-top:12px}
+.row button{flex:1;padding:10px;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
+#ok{background:#1565c0;color:#fff}
+@media(max-width:600px){ .card iframe{height:75vh} header{font-size:18px} }
+</style>
+</head>
+<body>
+<header>مدرسة الشعراوي - جداول الحصص</header>
+<div class="main">
+  <div class="btns">
+    <button id="up">📤 رفع جدول PDF</button>
+    <button id="delAll">🗑️ حذف الكل</button>
+  </div>
+  <div id="list"><p id="no">لا يوجد جداول - ارفع أول جدول</p></div>
+</div>
+
+<div id="modal"><div class="box">
+<h3>كلمة السر</h3>
+<input type="password" id="pass" placeholder="••••••••" autocomplete="off">
+<p id="error"></p>
+<div class="row"><button id="ok">دخول</button><button id="cancel">إلغاء</button></div>
+</div></div>
+
+<input type="file" id="file" accept="application/pdf" hidden>
+
+<script>
+const PASS = "86518651";
+let mode = "upload"; let delId = null; const dbName = "shaarawyDB2";
+function openDB(){ return new Promise((res,rej)=>{ const req=indexedDB.open(dbName,1); req.onupgradeneeded=e=>e.target.result.createObjectStore("pdfs",{keyPath:"id"}); req.onsuccess=e=>res(e.target.result); req.onerror=e=>rej(e); }); }
+async function savePDF(file){ const db=await openDB(); const id=Date.now().toString(); const buffer=await file.arrayBuffer(); return new Promise((res,rej)=>{ const tx=db.transaction("pdfs","readwrite"); tx.objectStore("pdfs").put({id,name:file.name,buffer,time:new Date().toLocaleString('ar-EG')}); tx.oncomplete=()=>res(); tx.onerror=()=>rej(); }); }
+async function getAll(){ const db=await openDB(); return new Promise(res=>{ const tx=db.transaction("pdfs","readonly"); const req=tx.objectStore("pdfs").getAll(); req.onsuccess=()=>res(req.result); }); }
+async function deleteOne(id){ const db=await openDB(); db.transaction("pdfs","readwrite").objectStore("pdfs").delete(id); }
+async function deleteAll(){ const db=await openDB(); db.transaction("pdfs","readwrite").objectStore("pdfs").clear(); }
+async function render(){
+  const list=document.getElementById('list'); const data=await getAll(); list.innerHTML="";
+  if(!data.length){ list.innerHTML='<p id="no">لا يوجد جداول</p>'; return; }
+  data.reverse().forEach(item=>{
+    const url=URL.createObjectURL(new Blob([item.buffer],{type:"application/pdf"}));
+    const div=document.createElement('div'); div.className="card";
+    // #toolbar=0&navpanes=0 بيخفي الشريط الاسود بتاع جوجل
+    div.innerHTML=`<iframe src="${url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH" loading="lazy"></iframe><div class="info"><span>${item.name}</span><div><a href="${url}" target="_blank">فتح / طباعة</a> <button data-id="${item.id}">حذف</button></div></div>`;
+    list.appendChild(div);
+  });
+  list.querySelectorAll('button[data-id]').forEach(b=> b.onclick=()=>{ mode="delOne"; delId=b.dataset.id; showModal(); });
+}
+function showModal(){ document.getElementById('modal').style.display='flex'; document.getElementById('pass').value=''; document.getElementById('error').textContent=''; document.getElementById('pass').focus(); }
+function hideModal(){ document.getElementById('modal').style.display='none'; }
+document.getElementById('up').onclick=()=>{ mode="upload"; showModal(); }
+document.getElementById('delAll').onclick=()=>{ mode="delAll"; showModal(); }
+document.getElementById('cancel').onclick=hideModal;
+document.getElementById('ok').onclick=async()=>{
+  if(document.getElementById('pass').value!==PASS){ document.getElementById('error').textContent="غلط"; return; }
+  if(mode==="upload") document.getElementById('file').click();
+  if(mode==="delAll"){ await deleteAll(); await render(); hideModal(); }
+  if(mode==="delOne"){ await deleteOne(delId); await render(); hideModal(); }
+};
+document.getElementById('file').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  await savePDF(f); await render(); hideModal(); e.target.value="";
+};
+render();
+</script>
+</body>
+</html>
+</body>
+</html>
