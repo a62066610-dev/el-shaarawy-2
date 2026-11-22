@@ -1,12 +1,4 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-</head>
-<body>
-  <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -14,86 +6,87 @@
 <title>مدرسة الشعراوي</title>
 <style>
 *{box-sizing:border-box;font-family:Tahoma}
-body{margin:0;background:#ffffff}
-header{background:#0d47a1;color:#fff;text-align:center;padding:18px;font-size:22px;font-weight:bold}
+body{margin:0;background:#fff}
+header{background:#0d47a1;color:#fff;text-align:center;padding:16px;font-weight:bold}
 .main{max-width:1000px;margin:auto;padding:10px}
-.btns{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap}
-.btns button{flex:1;min-width:140px;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:bold;cursor:pointer}
+.btns{display:flex;gap:8px}
+.btns button{flex:1;padding:14px;border:0;border-radius:10px;font-weight:bold;cursor:pointer}
 #up{background:#1565c0;color:#fff}
-#delAll{background:#c62828;color:#fff}
-.card{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:0;overflow:hidden;margin-bottom:16px}
-.card iframe{width:100%;height:110vh;border:0;background:#fff;display:block}
-.info{padding:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;background:#f8f9fa;border-top:1px solid #eee}
-.info a{background:#2e7d32;color:#fff;padding:8px 14px;border-radius:8px;text-decoration:none;font-size:14px}
-.info button{background:#ff5252;color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px}
-#no{text-align:center;color:#888;padding:60px 10px}
-#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);justify-content:center;align-items:center;z-index:9999}
-.box{background:#fff;padding:20px;border-radius:12px;width:90%;max-width:320px;text-align:center}
-.box input{width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;margin-top:10px;text-align:center;letter-spacing:5px}
-#error{color:red;height:18px;font-size:13px}
-.row{display:flex;gap:10px;margin-top:12px}
-.row button{flex:1;padding:10px;border:none;border-radius:8px;font-weight:bold;cursor:pointer}
-#ok{background:#1565c0;color:#fff}
-@media(max-width:600px){ .card iframe{height:75vh} header{font-size:18px} }
+#del{background:#c62828;color:#fff}
+.card{border:1px solid #eee;border-radius:12px;overflow:hidden;margin-top:14px}
+.card iframe{width:100%;height:75vh;border:0;background:#fff}
+@media(min-width:800px){ .card iframe{height:110vh} }
+.info{padding:10px;background:#f9f9f9;display:flex;justify-content:space-between;align-items:center}
+.info a{background:#2e7d32;color:#fff;padding:7px 12px;border-radius:8px;text-decoration:none}
+.info button{background:#ff5252;color:#fff;border:0;padding:7px 12px;border-radius:8px}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);justify-content:center;align-items:center;z-index:999}
+.box{background:#fff;padding:18px;border-radius:12px;width:90%;max-width:300px;text-align:center}
+.box input{width:100%;padding:12px;border:1px solid #ccc;border-radius:8px;text-align:center;letter-spacing:4px}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1;padding:10px;border:0;border-radius:8px;font-weight:bold}
 </style>
 </head>
 <body>
-<header>مدرسة الشعراوي - جداول الحصص</header>
+<header>مدرسة الشعراوي - الجداول</header>
 <div class="main">
-  <div class="btns">
-    <button id="up">📤 رفع جدول PDF</button>
-    <button id="delAll">🗑️ حذف الكل</button>
-  </div>
-  <div id="list"><p id="no">لا يوجد جداول - ارفع أول جدول</p></div>
+<div class="btns"><button id="up">📤 رفع</button><button id="del">🗑️ حذف الكل</button></div>
+<div id="list"></div>
 </div>
-
-<div id="modal"><div class="box">
-<h3>كلمة السر</h3>
-<input type="password" id="pass" placeholder="••••••••" autocomplete="off">
-<p id="error"></p>
-<div class="row"><button id="ok">دخول</button><button id="cancel">إلغاء</button></div>
-</div></div>
-
+<div id="modal"><div class="box"><h3>كلمة السر</h3><input type="password" id="pass" placeholder="••••••••"><p id="err" style="color:red;height:18px"></p><div class="row"><button id="ok" style="background:#1565c0;color:#fff">دخول</button><button id="cn">إلغاء</button></div></div></div>
 <input type="file" id="file" accept="application/pdf" hidden>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getDatabase,ref,push,set,onValue,remove} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import {getStorage,ref as sRef,uploadBytes,getDownloadURL,deleteObject,listAll} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
-<script>
-const PASS = "86518651";
-let mode = "upload"; let delId = null; const dbName = "shaarawyDB2";
-function openDB(){ return new Promise((res,rej)=>{ const req=indexedDB.open(dbName,1); req.onupgradeneeded=e=>e.target.result.createObjectStore("pdfs",{keyPath:"id"}); req.onsuccess=e=>res(e.target.result); req.onerror=e=>rej(e); }); }
-async function savePDF(file){ const db=await openDB(); const id=Date.now().toString(); const buffer=await file.arrayBuffer(); return new Promise((res,rej)=>{ const tx=db.transaction("pdfs","readwrite"); tx.objectStore("pdfs").put({id,name:file.name,buffer,time:new Date().toLocaleString('ar-EG')}); tx.oncomplete=()=>res(); tx.onerror=()=>rej(); }); }
-async function getAll(){ const db=await openDB(); return new Promise(res=>{ const tx=db.transaction("pdfs","readonly"); const req=tx.objectStore("pdfs").getAll(); req.onsuccess=()=>res(req.result); }); }
-async function deleteOne(id){ const db=await openDB(); db.transaction("pdfs","readwrite").objectStore("pdfs").delete(id); }
-async function deleteAll(){ const db=await openDB(); db.transaction("pdfs","readwrite").objectStore("pdfs").clear(); }
-async function render(){
-  const list=document.getElementById('list'); const data=await getAll(); list.innerHTML="";
-  if(!data.length){ list.innerHTML='<p id="no">لا يوجد جداول</p>'; return; }
-  data.reverse().forEach(item=>{
-    const url=URL.createObjectURL(new Blob([item.buffer],{type:"application/pdf"}));
-    const div=document.createElement('div'); div.className="card";
-    // #toolbar=0&navpanes=0 بيخفي الشريط الاسود بتاع جوجل
-    div.innerHTML=`<iframe src="${url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH" loading="lazy"></iframe><div class="info"><span>${item.name}</span><div><a href="${url}" target="_blank">فتح / طباعة</a> <button data-id="${item.id}">حذف</button></div></div>`;
-    list.appendChild(div);
-  });
-  list.querySelectorAll('button[data-id]').forEach(b=> b.onclick=()=>{ mode="delOne"; delId=b.dataset.id; showModal(); });
-}
-function showModal(){ document.getElementById('modal').style.display='flex'; document.getElementById('pass').value=''; document.getElementById('error').textContent=''; document.getElementById('pass').focus(); }
-function hideModal(){ document.getElementById('modal').style.display='none'; }
-document.getElementById('up').onclick=()=>{ mode="upload"; showModal(); }
-document.getElementById('delAll').onclick=()=>{ mode="delAll"; showModal(); }
-document.getElementById('cancel').onclick=hideModal;
-document.getElementById('ok').onclick=async()=>{
-  if(document.getElementById('pass').value!==PASS){ document.getElementById('error').textContent="غلط"; return; }
-  if(mode==="upload") document.getElementById('file').click();
-  if(mode==="delAll"){ await deleteAll(); await render(); hideModal(); }
-  if(mode==="delOne"){ await deleteOne(delId); await render(); hideModal(); }
+const firebaseConfig = {
+  apiKey: "AIzaSyA_YOUR_KEY",
+  authDomain: "shaarawy-school.firebaseapp.com",
+  databaseURL: "https://shaarawy-school-default-rtdb.firebaseio.com",
+  projectId: "shaarawy-school",
+  storageBucket: "shaarawy-school.appspot.com",
+  appId: "1:123:web:abc"
 };
-document.getElementById('file').onchange=async e=>{
-  const f=e.target.files[0]; if(!f) return;
-  await savePDF(f); await render(); hideModal(); e.target.value="";
+// هتغير دول بس من Firebase Console
+
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+const storage=getStorage(app);
+const PASS="86518651";
+
+const tablesRef=ref(db,'tables');
+const list=document.getElementById('list');
+let mode="up"; let delId=null;
+
+function show(m){mode=m; modal.style.display='flex'; pass.value=''; err.textContent=''; pass.focus();}
+function hide(){ modal.style.display='none'; }
+
+up.onclick=()=>show('up'); del.onclick=()=>show('delAll'); cn.onclick=hide;
+ok.onclick=async()=>{
+ if(pass.value!==PASS){ err.textContent='غلط'; return; }
+ if(mode==='up') file.click();
+ if(mode==='delAll'){ if(confirm('امسح الكل؟')){ const snap=await listAll(sRef(storage,'tables')); snap.items.forEach(i=>deleteObject(i)); await remove(tablesRef); } hide(); }
+ if(mode==='delOne'){ await remove(ref(db,'tables/'+delId)); await deleteObject(sRef(storage,'tables/'+delId+'.pdf')).catch(()=>{}); hide(); }
 };
-render();
+file.onchange=async e=>{
+ const f=e.target.files[0]; if(!f) return;
+ ok.textContent='جاري...';
+ const r=push(tablesRef); const id=r.key;
+ await uploadBytes(sRef(storage,'tables/'+id+'.pdf'), f);
+ const url=await getDownloadURL(sRef(storage,'tables/'+id+'.pdf'));
+ await set(r, {id, name:f.name, url, time:Date.now()});
+ hide(); ok.textContent='دخول'; e.target.value='';
+};
+onValue(tablesRef, snap=>{
+ const data=snap.val(); list.innerHTML='';
+ if(!data){ list.innerHTML='<p style="text-align:center;color:#888;padding:40px">لا يوجد جداول</p>'; return; }
+ Object.values(data).sort((a,b)=>b.time-a.time).forEach(it=>{
+   const d=document.createElement('div'); d.className='card';
+   d.innerHTML=`<iframe src="${it.url}#toolbar=0&navpanes=0&view=FitH" loading="lazy"></iframe><div class="info"><span>${it.name}</span><div><a href="${it.url}" target="_blank">طباعة</a> <button data-id="${it.id}">حذف</button></div></div>`;
+   list.appendChild(d);
+ });
+ list.querySelectorAll('button[data-id]').forEach(b=> b.onclick=()=>{ delId=b.dataset.id; show('delOne'); });
+});
 </script>
-</body>
-</html>
 </body>
 </html>
